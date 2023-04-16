@@ -38,11 +38,15 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install zig on linux
+        if: runner.os == 'Linux'
+        uses: goto-bus-stop/setup-zig@v2 # needed for cargo-zigbuild
+
       - name: Build on Linux
         if: runner.os == 'Linux'
         run: |
-          cargo build --bin kaspad --release
-          cargo build --bin simpa --release
+          cargo install cargo-zigbuild
+          cargo --verbose zigbuild --bin kaspad --bin simpa --release --target x86_64-unknown-linux-gnu.2.27 # Use an older glibc version
           mkdir bin || true
           cp target/release/kaspad bin/
           cp target/release/simpa bin/
