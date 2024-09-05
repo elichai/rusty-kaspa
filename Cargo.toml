@@ -323,7 +323,8 @@ workflow-wasm = { version = "0.17.0" }
 
 [profile.release]
 lto = "thin"
-strip = true
+strip = false
+debug = true
 overflow-checks = true
 
 [profile.heap]
