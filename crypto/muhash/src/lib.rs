@@ -123,13 +123,17 @@ impl TryFrom<MuHash> for Uint3072 {
     type Error = MuHashError;
 
     fn try_from(value: MuHash) -> Result<Self, Self::Error> {
-        if value.denominator == U3072::one() { Ok(value.numerator.into()) } else { Err(MuHashError::NonNormalizedValue) }
+        if value.denominator == U3072::one() {
+            Ok(Uint3072(value.numerator.to_le_u64_limbs()))
+        } else {
+            Err(MuHashError::NonNormalizedValue)
+        }
     }
 }
 
 impl From<Uint3072> for MuHash {
     fn from(u: Uint3072) -> Self {
-        MuHash { numerator: u.into(), denominator: U3072::one() }
+        MuHash { numerator: U3072::from_le_u64_limbs(u.0), denominator: U3072::one() }
     }
 }
 
@@ -152,20 +156,23 @@ impl<'a> MuHashElementBuilder<'a> {
 
     pub fn finalize(self) {
         let hash = self.element_hasher.finalize();
-        let mut stream = ChaCha20Rng::from_seed(hash.as_bytes());
-        let mut bytes = [0u8; ELEMENT_BYTE_SIZE];
-        stream.fill_bytes(&mut bytes);
-        *self.muhash_field *= U3072::from_le_bytes(bytes);
+        let element = hash_to_element(&hash);
+        *self.muhash_field *= element;
     }
+}
+
+#[inline]
+fn hash_to_element(hash: &Hash) -> U3072 {
+    let mut stream = ChaCha20Rng::from_seed(hash.as_bytes());
+    let mut bytes = [0u8; ELEMENT_BYTE_SIZE];
+    stream.fill_bytes(&mut bytes);
+    U3072::from_le_bytes(bytes)
 }
 
 #[inline]
 fn data_to_element(data: &[u8]) -> U3072 {
     let hash = MuHashElementHash::hash(data);
-    let mut stream = ChaCha20Rng::from_seed(hash.as_bytes());
-    let mut bytes = [0u8; ELEMENT_BYTE_SIZE];
-    stream.fill_bytes(&mut bytes);
-    U3072::from_le_bytes(bytes)
+    hash_to_element(&hash)
 }
 
 impl Default for MuHash {
