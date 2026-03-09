@@ -1,5 +1,5 @@
 #[doc(hidden)]
-pub use {faster_hex, malachite_base, malachite_nz, serde};
+pub use {faster_hex, serde};
 
 // TODO: Add u32 support for optimization on 32 bit machines.
 
@@ -340,24 +340,6 @@ macro_rules! construct_uint {
                 }
 
                 (Self(ret), sub_copy)
-            }
-
-            /// Assumes self < prime
-            #[inline]
-            pub fn mod_inverse(self, prime: Self) -> Option<Self> {
-                use $crate::uint::malachite_nz::natural::Natural;
-                use $crate::uint::malachite_base::num::arithmetic::traits::ModInverse;
-
-                let x = Natural::from_limbs_asc(&self.0);
-                let p = Natural::from_limbs_asc(&prime.0);
-                let mod_inv = x.mod_inverse(p);
-
-                mod_inv.map(|n| {
-                    let mut res = [0u64; Self::LIMBS];
-                    let limbs = n.into_limbs_asc();
-                    res[..limbs.len()].copy_from_slice(&limbs);
-                    Self(res)
-                })
             }
 
             #[inline]
@@ -1173,45 +1155,5 @@ mod tests {
         // Add
         assert_eq!(u1.saturating_add(Uint128::from_u64(1)), Uint128::MAX);
         assert_eq!(u2.saturating_add(Uint128::from_u64(1)), Uint128::from_u128(u64::MAX as u128 + 1));
-    }
-
-    #[test]
-    fn test_mod_inv() {
-        use core::cmp::Ordering;
-        let mut rng = ChaCha8Rng::from_seed([0; 32]);
-        let mut buf = [0u8; 16];
-        for _ in 0..50_000 {
-            rng.fill_bytes(&mut buf);
-            let uint1 = Uint128::from_le_bytes(buf);
-            rng.fill_bytes(&mut buf);
-            let uint2 = Uint128::from_le_bytes(buf);
-            let (bigger, smaller) = match uint1.cmp(&uint2) {
-                Ordering::Greater => (uint1, uint2),
-                Ordering::Less => (uint2, uint1),
-                Ordering::Equal => continue,
-            };
-            let inv = smaller.mod_inverse(bigger);
-            if let Some(inv) = inv {
-                assert_eq!(prod_bin(inv, smaller, bigger), 1u64);
-            }
-        }
-
-        fn sum(x: Uint128, y: Uint128, m: Uint128) -> Uint128 {
-            let res = x.overflowing_add(y).0;
-            if res < x || res >= m { res.overflowing_sub(m).0 } else { res }
-        }
-        fn prod_bin(x: Uint128, y: Uint128, m: Uint128) -> Uint128 {
-            if y == 1u64 {
-                return x;
-            } else if y == 0u64 {
-                return Uint128::ZERO;
-            }
-            let mut res = prod_bin(x, y >> 1, m);
-            res = sum(res, res, m);
-            if (y.as_u64() & 1) == 1 {
-                res = sum(res, x, m);
-            }
-            res
-        }
     }
 }

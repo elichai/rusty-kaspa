@@ -127,13 +127,6 @@ fn bench_uint3072(c: &mut Criterion) {
     bench_op(&mut uint3072_c, &uint3072_one, &u64s, |a, b| a / b, "u64 division");
     bench_op(&mut uint3072_c, &uint3072_one, &shifts, |a, b| a << b, "left shift");
     bench_op(&mut uint3072_c, &uint3072_one, &shifts, |a, b| a >> b, "right shift");
-    uint3072_c.bench_function("mod_inv Muhash prime", |b| {
-        b.iter(|| {
-            for &a in &uint3072_one[..uint3072_one.len() / 4] {
-                black_box(a.mod_inverse(PRIME));
-            }
-        });
-    });
     uint3072_c.finish();
 }
 
