@@ -4,7 +4,6 @@ use itertools::Itertools;
 use kaspa_consensus_core::errors::sync::{SyncManagerError, SyncManagerResult};
 use kaspa_database::prelude::StoreResultExt;
 use kaspa_hashes::Hash;
-use kaspa_math::uint::malachite_base::num::arithmetic::traits::CeilingLogBase2;
 use parking_lot::RwLock;
 
 use crate::model::{
@@ -141,7 +140,13 @@ impl<
             return Err(SyncManagerError::LowHashHigherThanHighHash(low, high));
         }
 
-        let mut locator = Vec::with_capacity((high_index - low_index).ceiling_log_base_2() as usize);
+        let locator_cap = {
+            let x = high_index - low_index;
+            let is_not_power_of_2 = !x.is_power_of_two();
+            x.ilog2() as usize + usize::from(is_not_power_of_2)
+        };
+
+        let mut locator = Vec::with_capacity(locator_cap);
         let mut step = 1;
         let mut current_index = high_index;
         while current_index > low_index {
